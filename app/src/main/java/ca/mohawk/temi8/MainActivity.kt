@@ -10,6 +10,7 @@ import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -41,6 +42,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var audioFile: File? = null
     private lateinit var textToSpeech: TextToSpeech
     private var isTtsReady = false
+    private var isNewConversation = true
+    private var isSpeaking = false
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,6 +65,26 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         adapter.setDropDownViewResource(R.layout.spinner_item)
         languageSpinner.adapter = adapter
 
+//        val btnStop = findViewById<ImageButton>(R.id.btnStop)
+//        btnStop.setOnClickListener {
+//            stopTTS()
+//            btnStop.visibility = View.GONE
+//        }
+
+        val btnNewChat = findViewById<ImageButton>(R.id.btnNewChat)
+        btnNewChat.setOnClickListener {
+            // Clear all messages
+            messages.clear()
+            messageAdapter.notifyDataSetChanged()
+
+            // Reset UI
+            recordingStatus.text = "Start a conversation"
+            recordingStatus.visibility = View.VISIBLE
+            isNewConversation = true
+
+            Toast.makeText(this, "New chat started", Toast.LENGTH_SHORT).show()
+        }
+
 
         // Initialize TextToSpeech
         textToSpeech = TextToSpeech(this, this)
@@ -80,17 +104,23 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         // Mic button click handler
         micAnimation.setOnClickListener {
+
             if (isRecording) {
                 stopRecording()
                 micAnimation.pauseAnimation()
                 recordingStatus.visibility = View.GONE
-                recordingStatus.text = "Start Recording"
+                if (isNewConversation) {
+                    recordingStatus.text = "Start a conversation"
+                    isNewConversation = false
+                } else {
+                    recordingStatus.text = "Reply"
+                }
                 processAudioWithOpenAI()
             } else {
                 startRecording()
                 micAnimation.playAnimation()
                 recordingStatus.visibility = View.VISIBLE
-                recordingStatus.text = "Recording is in Progress!!"
+                recordingStatus.text = "Listening..."
             }
             isRecording = !isRecording
         }
@@ -119,6 +149,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         mediaRecorder = null
     }
+
+    private fun stopTTS() {
+        if (isTtsReady && textToSpeech.isSpeaking) {
+            textToSpeech.stop()
+            Toast.makeText(this, "Speech stopped", Toast.LENGTH_SHORT).show()
+        }
+    }
+
 
     private fun processAudioWithOpenAI() {
         CoroutineScope(Dispatchers.IO).launch {
@@ -173,7 +211,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Log.e("TTS", "Engine not initialized")
             return
         }
+
+//        val btnStop = findViewById<ImageButton>(R.id.btnStop)
         textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+
+        // TO DO: implement "stop talking" button functionality
+//        // Show the stop button while speaking
+//        btnStop.visibility = View.VISIBLE
+//
+//        // Polling to detect when speech ends
+//        CoroutineScope(Dispatchers.Main).launch {
+//            while (textToSpeech.isSpeaking) {
+//                kotlinx.coroutines.delay(500)
+//            }
+//            btnStop.visibility = View.GONE
+//        }
     }
 
     override fun onInit(status: Int) {

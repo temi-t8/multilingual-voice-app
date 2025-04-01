@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="8dp">
+    android:padding="10dp">
 
     <TextView
         android:id="@+id/userMessage"
@@ -11,9 +11,10 @@
         android:layout_height="wrap_content"
         android:layout_gravity="end"
         android:background="@drawable/user_message_bg"
-        android:padding="8dp"
+        android:padding="10dp"
         android:textColor="@color/black"
-        android:visibility="gone"/>
+        android:textSize="18sp"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/botMessage"
@@ -21,7 +22,8 @@
         android:layout_height="wrap_content"
         android:layout_gravity="start"
         android:background="@drawable/bot_message_bg"
-        android:padding="8dp"
+        android:padding="10dp"
         android:textColor="@color/black"
+        android:textSize="18sp"
         android:visibility="gone"/>
 </LinearLayout>
