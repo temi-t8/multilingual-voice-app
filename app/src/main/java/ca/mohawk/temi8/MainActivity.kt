@@ -1,6 +1,7 @@
 package ca.mohawk.temi8
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.MediaRecorder
 import android.os.*
@@ -21,6 +22,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.util.*
+import android.widget.ImageButton
 
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
@@ -36,6 +38,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var audioFile: File? = null
     private lateinit var textToSpeech: TextToSpeech
     private var isTtsReady = false
+    private var isNewConversation = true
+    private var isSpeaking = false
 
     private val SILENCE_THRESHOLD = 150
     private val SILENCE_TIMEOUT = 4000L
@@ -67,6 +71,30 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 //            val newPosition = (lastVisible + 5).coerceAtMost(messages.size - 1)
 //            transcriptionRecyclerView.smoothScrollToPosition(newPosition)
 //        }
+
+        val toggleButton = findViewById<ImageButton>(R.id.btnToggleInterface)
+        toggleButton.setOnClickListener {
+            val intent = Intent(this, VoiceActivity::class.java)
+            startActivity(intent)
+        }
+
+        val btnNewChat = findViewById<ImageButton>(R.id.btnNewChat)
+        btnNewChat.setOnClickListener {
+            // Stop everything just in case
+            stopConversation()
+            textToSpeech.stop()
+
+            // Reset UI state
+            messages.clear()
+            messageAdapter.notifyDataSetChanged()
+            transcriptionRecyclerView.scrollToPosition(0)
+
+            recordingStatus.text = "Tap mic to start conversation"
+            recordingStatus.visibility = View.VISIBLE
+            isNewConversation = true
+
+            Toast.makeText(this, "New chat started", Toast.LENGTH_SHORT).show()
+        }
 
 
         val languages = resources.getStringArray(R.array.languages)

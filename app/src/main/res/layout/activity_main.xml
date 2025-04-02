@@ -5,21 +5,67 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="@color/white">
+    android:background="@color/light_gray"
+    android:textColor="@color/white">
 
     <!-- Language Selector -->
-    <Spinner
-        android:id="@+id/languageSpinner"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:entries="@array/languages"
-        android:textColor="@color/black"
-        android:backgroundTint="@color/blue"
-        android:spinnerMode="dropdown"
-        android:padding="8dp"/>
 
     <!-- Transcription Display -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_margin="0dp"
+        android:gravity="center_vertical"
+        android:weightSum="2">
+
+        <LinearLayout
+            android:layout_width="1111dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="start"
+            android:orientation="horizontal">
+
+            <Spinner
+                android:id="@+id/languageSpinner"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="48dp"
+                android:backgroundTint="@color/green"
+                android:entries="@array/languages"
+                android:padding="0dp"
+                android:spinnerMode="dropdown"
+                android:textColor="@color/white" />
+
+            <!-- android:layout_gravity="center_horizontal" -->
+
+        </LinearLayout>
+
+        <!-- New chat button -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="end"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btnNewChat"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="0dp"
+                android:layout_weight="1"
+                android:layout_marginTop="48dp"
+                android:background="@drawable/rounded_bg"
+                android:contentDescription="btnNewChat"
+                android:layout_marginEnd="8dp"
+                android:gravity="end"
+                android:padding="8dp"
+                android:src="@drawable/ic_plus" />
+
+        </LinearLayout>
+    </LinearLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/transcriptionRecyclerView"
         android:layout_width="match_parent"
@@ -30,25 +76,40 @@
         android:clipToPadding="false"/>
 
     <!-- Recording Status -->
+
+    <!-- Mic Button with Animation -->
+
+    <!-- Bottom Button Layout -->
+
     <TextView
         android:id="@+id/recordingStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
-        android:text="Start Recording"
-        android:textColor="@color/blue"
         android:layout_marginTop="8dp"
-        android:visibility="visible"/>
+        android:text="Start a conversation"
+        android:textColor="@color/white"
+        android:textSize="24sp"
+        android:visibility="visible" />
 
-    <!-- Mic Button with Animation -->
     <com.airbnb.lottie.LottieAnimationView
         android:id="@+id/micAnimation"
-        android:layout_width="200dp"
-        android:layout_height="200dp"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
         android:layout_gravity="center_horizontal"
         android:scaleType="centerCrop"
         app:lottie_autoPlay="false"
         app:lottie_loop="true"
-        app:lottie_rawRes="@raw/mic_wave_animation"/>
+        app:lottie_rawRes="@raw/mic_wave_animation" />
 
+    <ImageButton
+        android:id="@+id/btnToggleInterface"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/ic_switch"
+        android:backgroundTint="@color/blue"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:contentDescription="Toggle Interface"/>
 </LinearLayout>
