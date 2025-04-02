@@ -43,7 +43,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var textToSpeech: TextToSpeech
     private var isTtsReady = false
     private var isNewConversation = true
-    private var isSpeaking = false
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,12 +64,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         adapter.setDropDownViewResource(R.layout.spinner_item)
         languageSpinner.adapter = adapter
 
-//        val btnStop = findViewById<ImageButton>(R.id.btnStop)
-//        btnStop.setOnClickListener {
-//            stopTTS()
-//            btnStop.visibility = View.GONE
-//        }
-
         val btnNewChat = findViewById<ImageButton>(R.id.btnNewChat)
         btnNewChat.setOnClickListener {
             // Clear all messages
@@ -84,7 +77,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             Toast.makeText(this, "New chat started", Toast.LENGTH_SHORT).show()
         }
-
 
         // Initialize TextToSpeech
         textToSpeech = TextToSpeech(this, this)
@@ -211,21 +203,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Log.e("TTS", "Engine not initialized")
             return
         }
-
-//        val btnStop = findViewById<ImageButton>(R.id.btnStop)
         textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
-
-        // TO DO: implement "stop talking" button functionality
-//        // Show the stop button while speaking
-//        btnStop.visibility = View.VISIBLE
-//
-//        // Polling to detect when speech ends
-//        CoroutineScope(Dispatchers.Main).launch {
-//            while (textToSpeech.isSpeaking) {
-//                kotlinx.coroutines.delay(500)
-//            }
-//            btnStop.visibility = View.GONE
-//        }
     }
 
     override fun onInit(status: Int) {
