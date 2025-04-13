@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">TEMI Multilingual app</string>
+    <string-array name="languages">
+        <item>English</item>
+        <item>Spanish</item>
+        <item>French</item>
+        <item>Hindi</item>
+    </string-array>
+</resources>
