@@ -20,6 +20,10 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.util.*
 
+/**
+ * VoiceActivity manages audio input/output using MediaRecorder and TextToSpeech.
+ * It also communicates with a WebSocket to handle conversation interactions.
+ */
 class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private lateinit var micButton: LottieAnimationView
@@ -36,7 +40,10 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var lastSoundTime: Long = 0
     private val SILENCE_TIMEOUT = 2000L
 
-
+    /**
+     * Called when the activity is created. Sets up UI components, TTS, permission checks,
+     * and configures WebSocket callbacks.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_voice)
@@ -55,6 +62,7 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         adapter.setDropDownViewResource(R.layout.spinner_item)
         languageSpinner.adapter = adapter
 
+        // Update TTS language when spinner selection changes
         languageSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
                 updateTtsLanguage()
@@ -62,6 +70,8 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
+
+        // Stop TTS and restart mic when btnStop is clicked
         findViewById<ImageButton>(R.id.btnStop).setOnClickListener {
             textToSpeech.stop()
             findViewById<ImageButton>(R.id.btnStop).visibility = View.GONE
@@ -73,6 +83,7 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             micButton.playAnimation()
         }
 
+        // Start a new chat by stopping the current conversation and resetting UI
         findViewById<ImageButton>(R.id.btnNewChat).setOnClickListener {
             stopConversation()
             Toast.makeText(this, "New chat started!", Toast.LENGTH_SHORT).show()
@@ -81,7 +92,7 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             micButton.pauseAnimation()
         }
 
-
+        // Toggle mic on or off based on current state
         micButton.setOnClickListener {
             if (!isMicActive) {
                 isMicActive = true
@@ -94,15 +105,18 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 stopConversation()
             }
         }
-
+        
+        // Stop speaking and restart mic when btnStop is clicked
         btnStop.setOnClickListener {
             stopSpeakingAndRestartMic()
         }
-
+        
+        // Return to previous activity (MainActivity)
         findViewById<ImageButton>(R.id.btnToggleInterface).setOnClickListener {
             finish()
         }
-
+        
+        // Check for audio recording permission
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 1)
         }
@@ -111,6 +125,7 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         statusLabel.text = "Tap the mic and ask me anything!"
         micButton.pauseAnimation()
 
+        // Handle messages received from WebSocket (assistant replies)
         WebSocketManager.onMessageReceived = { reply ->
             CoroutineScope(Dispatchers.IO).launch {
                 val languageCodes = resources.getStringArray(R.array.language_codes)
@@ -144,7 +159,10 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
         }
     }
-
+    
+    /**
+     * Stops ongoing conversation by halting mic and disconnecting WebSocket.
+     */
     private fun stopConversation() {
         isMicActive = false
         stopRecording()
@@ -153,7 +171,10 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         statusLabel.text = "Tap mic to start conversation"
         setWaveState(WaveState.IDLE)
     }
-
+    
+    /**
+     * Stops TTS playback, reconnects WebSocket, and restarts audio recording for a new conversation.
+     */
     private fun stopSpeakingAndRestartMic() {
         textToSpeech.stop()
         isMicActive = true
@@ -164,6 +185,10 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         micButton.playAnimation()
     }
 
+    /**
+     * Starts audio recording using MediaRecorder, storing the output in a temp file.
+     * Also initiates silence detection in a background coroutine.
+     */
     private fun startRecording() {
         try {
             audioFile = File.createTempFile("audio", ".mp3", cacheDir)
@@ -181,7 +206,12 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Log.e("AudioRecording", "Start Error: ${e.message}")
         }
     }
-
+    
+    /**
+     * Continuously checks whether the user has stopped speaking by measuring
+     * the amplitude of recorded audio. If silence is detected for a given
+     * duration (SILENCE_TIMEOUT) or a fallback time is reached, processing is triggered.
+     */
     private fun detectSilence() {
         CoroutineScope(Dispatchers.IO).launch {
             val noiseSamples = mutableListOf<Int>()
@@ -223,7 +253,9 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-
+    /**
+     * Stops recording safely, releasing MediaRecorder resources.
+     */
     private fun stopRecording() {
         try {
             mediaRecorder?.apply {
@@ -236,6 +268,10 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         mediaRecorder = null
     }
 
+    /**
+     * Called when a period of silence is detected. Sends the recorded audio
+     * for transcription and then passes the transcribed text to the WebSocket.
+     */
     private fun onVoicePauseDetected() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -289,6 +325,10 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    /**
+     * Lifecycle callback invoked when TTS is initialized.
+     * Sets up TTS language and UtteranceProgressListener.
+     */
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             isTtsReady = true
@@ -328,6 +368,9 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    /**
+     * Updates the TTS engine's language based on the user's selection from the spinner.
+     */
     private fun updateTtsLanguage() {
         val languageCodes = resources.getStringArray(R.array.language_codes)
         val locale = Locale.forLanguageTag(languageCodes[languageSpinner.selectedItemPosition])
@@ -335,16 +378,29 @@ class VoiceActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             textToSpeech.language = locale
         }
     }
-
+    
+    /**
+     * Called when the activity is destroyed. Shuts down TTS and stops the current conversation.
+     */
     override fun onDestroy() {
         textToSpeech.shutdown()
         stopConversation()
         super.onDestroy()
     }
 
+    /**
+     * Enumeration to represent various states of the waveform animation.
+     * LISTENING, THINKING, SPEAKING, or IDLE.
+     */
+
     enum class WaveState {
         LISTENING, THINKING, SPEAKING, IDLE
     }
+
+    /**
+     * Sets the wave animation based on the current state of the VoiceActivity.
+     * @param state The WaveState to be displayed.
+     */
 
     private fun setWaveState(state: WaveState) {
         val resId = when (state) {
