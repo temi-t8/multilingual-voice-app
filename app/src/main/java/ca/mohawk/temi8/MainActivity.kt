@@ -23,6 +23,14 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.util.*
 
+/**
+ * MainActivity is the primary activity for the Temi8 app. It handles:
+ * - Audio recording (MediaRecorder) and silence detection.
+ * - Speech-to-text transcription through Whisper/OpenAI.
+ * - Text-to-speech output.
+ * - WebSocket communication with a server.
+ * - Language selection for both input and output translations.
+ */
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private lateinit var micAnimation: LottieAnimationView
@@ -45,39 +53,53 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private val SILENCE_TIMEOUT = 2000L
     private var lastSoundTime: Long = 0
 
+     /**
+     * Called when the activity is starting. Initializes views, TTS, 
+     * sets up UI listeners, and configures WebSocketManager.
+     */
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Initialize TextToSpeech with this activity as the listener
         textToSpeech = TextToSpeech(this, this)
 
+        // Link UI elements from layout
         micAnimation = findViewById(R.id.micAnimation)
         recordingStatus = findViewById(R.id.recordingStatus)
         languageSpinner = findViewById(R.id.languageSpinner)
         transcriptionRecyclerView = findViewById(R.id.transcriptionRecyclerView)
-
+        
+        // Button to toggle to a different activity (VoiceActivity)
         findViewById<ImageButton>(R.id.btnToggleInterface).setOnClickListener {
             val intent = Intent(this, VoiceActivity::class.java)
             startActivity(intent)
         }
 
+        // Stop button reference
         btnStop = findViewById(R.id.btnStop)
-
+        
+        // Stop button click listener stops speech and restarts mic
         btnStop.setOnClickListener {
             textToSpeech.stop()
             stopSpeakingAndRestartMic()
         }
-
+        
+        // Set up RecyclerView with a custom adapter for messages
         messageAdapter = MessageAdapter(messages)
         transcriptionRecyclerView.layoutManager = LinearLayoutManager(this)
         transcriptionRecyclerView.adapter = messageAdapter
-
+        
+        // Populate the language spinner with languages from resources
         val languages = resources.getStringArray(R.array.languages)
         val adapter = ArrayAdapter(this, R.layout.spinner_item, languages)
         adapter.setDropDownViewResource(R.layout.spinner_item)
         languageSpinner.adapter = adapter
 
+        // Listen for TTS progress to manage record/speak states
         textToSpeech.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            // During TTS playback, we set isMicActive to false and stop recording
             override fun onStart(utteranceId: String?) {
                 isMicActive = false
                 stopRecording()
@@ -88,7 +110,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
             }
 
-
+            // Once speaking is done, hide stop button and resume recording if connected
             override fun onDone(utteranceId: String?) {
                 Handler(Looper.getMainLooper()).post {
                     btnStop.visibility = View.GONE
@@ -104,15 +126,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             override fun onError(utteranceId: String?) {}
         })
 
+        // Request microphone permission if not already granted
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 1)
         }
 
+                // WebSocket callback for receiving messages (assistant replies)
         WebSocketManager.onMessageReceived = { reply ->
             CoroutineScope(Dispatchers.IO).launch {
                 val languageCodes = resources.getStringArray(R.array.language_codes)
                 val selectedLang = languageCodes[languageSpinner.selectedItemPosition]
 
+                // If the selected language isn't English, try to translate the reply
                 val translatedResponse = if (selectedLang != "en") {
                     try {
                         val gptResponse = RetrofitClient.openAIApiService.translateWithGPT(
@@ -129,13 +154,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         reply
                     }
                 } else reply
-
+                
+                // Update UI with the assistant's translated response
                 withContext(Dispatchers.Main) {
                     messages.add(Message(translatedResponse, isUser = false))
                     messageAdapter.notifyItemInserted(messages.size - 1)
                     transcriptionRecyclerView.smoothScrollToPosition(messages.size - 1)
 
                     val params = Bundle()
+                    
+                    // If TTS is ready, speak immediately; otherwise queue for later
                     if (isTtsReady) {
                         textToSpeech.speak(translatedResponse, TextToSpeech.QUEUE_FLUSH, params, "reply_id")
                     } else {
@@ -146,7 +174,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
             }
         }
-
+        
+        // Microphone animation click toggles between listening and stopping conversation
         micAnimation.setOnClickListener {
             if (!isMicActive) {
                 isMicActive = true
@@ -158,7 +187,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 stopConversation()
             }
         }
-
+        
+        // Listener for language spinner selection changes
         languageSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
                 updateTtsLanguage()
@@ -167,7 +197,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
     }
-
+    
+     /**
+     * Stops any ongoing speech, hides the stop button, and restarts microphone recording.
+     */
     private fun stopSpeakingAndRestartMic() {
         btnStop.visibility = View.GONE
         isMicActive = true
@@ -177,6 +210,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         micAnimation.playAnimation()
     }
 
+    /**
+     * Stops the conversation by disabling mic, stopping recording, disconnecting WebSocket,
+     * and updating UI accordingly.
+     */
 
     private fun stopConversation() {
         isMicActive = false
@@ -185,7 +222,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         micAnimation.pauseAnimation()
         recordingStatus.text = "Tap mic to start conversation"
     }
-
+    
+    /**
+     * Starts audio recording using MediaRecorder, saving to a temporary file.
+     * Also triggers silence detection in a background coroutine.
+     */
     private fun startRecording() {
         try {
             audioFile = File.createTempFile("audio", ".mp3", cacheDir)
@@ -203,7 +244,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Log.e("AudioRecording", "Start Error: ${e.message}")
         }
     }
-
+    
+    /**
+     * Continuously checks the recorded audio amplitude in the background.
+     * If silence is detected for a certain duration (SILENCE_TIMEOUT), 
+     * triggers a pause event to transcribe and handle the input.
+     */
     private fun detectSilence() {
         CoroutineScope(Dispatchers.IO).launch {
             val noiseSamples = mutableListOf<Int>()
@@ -229,7 +275,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                 val silentDuration = now - lastSoundTime
                 val elapsed = now - startTime
-
+                
+                // If silence or fallback time is reached, stop recording and process the input
                 if (silentDuration > SILENCE_TIMEOUT || elapsed > maxWaitTime) {
                     withContext(Dispatchers.Main) {
                         stopRecording()
@@ -245,7 +292,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
 
-
+    /**
+     * Stops the MediaRecorder safely, ignoring errors if it's not running.
+     */
     private fun stopRecording() {
         try {
             mediaRecorder?.apply {
@@ -258,6 +307,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         mediaRecorder = null
     }
 
+
+    /**
+     * Called when a pause in voice is detected. Submits the recorded audio for transcription
+     * to OpenAI, optionally translates the transcribed text to English, and sends it
+     * over WebSocket to get a reply.
+     */
     private fun onVoicePauseDetected() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -273,6 +328,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 val audioPart = MultipartBody.Part.createFormData("file", "audio.mp3", requestFile)
                 val modelField = MultipartBody.Part.createFormData("model", null, "whisper-1".toRequestBody("text/plain".toMediaType()))
 
+                // Transcribe audio using the Retrofit client
                 val transcriptionResponse = RetrofitClient.openAIApiService.transcribeAudio(
                     audioPart, modelField
                 )
@@ -280,7 +336,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 val originalText = transcriptionResponse.text
                 val languageCodes = resources.getStringArray(R.array.language_codes)
                 val selectedLanguage = languageCodes[languageSpinner.selectedItemPosition]
-
+                
+                // If selected language is not English, translate the user input back to English
                 val translatedToEnglish = if (selectedLanguage != "en") {
                     try {
                         val gptResponse = RetrofitClient.openAIApiService.translateWithGPT(
@@ -297,7 +354,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         originalText
                     }
                 } else originalText
-
+                
+                // Update UI with the user's transcribed message, then send to WebSocket
                 withContext(Dispatchers.Main) {
                     messages.add(Message(originalText, isUser = true))
                     messageAdapter.notifyItemInserted(messages.size - 1)
@@ -314,7 +372,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
         }
     }
-
+    
+    /**
+     * Callback from TextToSpeech when initialization is complete.
+     * If successful, updates language settings and processes any pending speech.
+     */
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             isTtsReady = true
@@ -331,7 +393,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-
+    /**
+     * Updates the TextToSpeech engine's language based on the selected item
+     * in the language spinner, if available.
+     */
     private fun updateTtsLanguage() {
         val languageCodes = resources.getStringArray(R.array.language_codes)
         val locale = Locale.forLanguageTag(languageCodes[languageSpinner.selectedItemPosition])
@@ -339,7 +404,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             textToSpeech.language = locale
         }
     }
-
+    /**
+     * Lifecycle callback invoked when the activity is about to be destroyed.
+     * Shuts down TextToSpeech to release resources.
+     */
     override fun onDestroy() {
         textToSpeech.shutdown()
         super.onDestroy()
