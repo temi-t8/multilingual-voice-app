@@ -6,9 +6,13 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
+/**
+ * Singleton object for creating and managing a Retrofit client configured to communicate with OpenAI's API.
+ */
 object RetrofitClient {
     private const val OPENAI_BASE_URL = "https://api.openai.com/"
-
+    
+    // OkHttpClient with interceptors for logging and setting authorization headers
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor { chain ->
             val original = chain.request()
@@ -24,7 +28,9 @@ object RetrofitClient {
             level = HttpLoggingInterceptor.Level.BODY
         })
         .build()
-
+    /**
+     * A lazy-initialized instance of OpenAIApiService for making API requests.
+     */
     val openAIApiService: OpenAIApiService by lazy {
         Retrofit.Builder()
             .baseUrl(OPENAI_BASE_URL)
